@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi des Prestations Sous-traitants</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c5282, #3182ce);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+            animation: float 20s infinite linear;
+        }
+        
+        @keyframes float {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+            letter-spacing: 2px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .controls {
+            padding: 25px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .filter-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .filter-group select, .filter-group input {
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .filter-group select:focus, .filter-group input:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3182ce, #2c5282);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #d69e2e, #b7791f);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            max-height: 70vh;
+            background: white;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            min-width: 1800px;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #4a5568, #2d3748);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-right: 1px solid #e2e8f0;
+            white-space: nowrap;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            vertical-align: middle;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background: linear-gradient(135deg, #e3f2fd, #bbdefb);
+            transform: scale(1.01);
+            transition: all 0.3s ease;
+        }
+        
+        .editable {
+            border: 2px solid transparent;
+            padding: 8px;
+            border-radius: 6px;
+            background: white;
+            width: 100%;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .editable:hover {
+            border-color: #3182ce;
+            box-shadow: 0 2px 8px rgba(49, 130, 206, 0.2);
+        }
+        
+        .editable:focus {
+            outline: none;
+            border-color: #2c5282;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+        
+        .status, .priority {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .status:hover, .priority:hover {
+            transform: scale(1.1);
+        }
+        
+        .status-planifie { background: linear-gradient(135deg, #fff3cd, #ffeaa7); color: #856404; }
+        .status-en-cours { background: linear-gradient(135deg, #d1ecf1, #74b9ff); color: #0c5460; }
+        .status-termine { background: linear-gradient(135deg, #d4edda, #00b894); color: #155724; }
+        .status-retard { background: linear-gradient(135deg, #f8d7da, #e17055); color: #721c24; }
+        .status-suspendu { background: linear-gradient(135deg, #e2e3e5, #636e72); color: #383d41; }
+        
+        .priority-critique { background: linear-gradient(135deg, #f8d7da, #e17055); color: #721c24; }
+        .priority-elevee { background: linear-gradient(135deg, #fff3cd, #ffeaa7); color: #856404; }
+        .priority-moyenne { background: linear-gradient(135deg, #d1ecf1, #74b9ff); color: #0c5460; }
+        .priority-faible { background: linear-gradient(135deg, #d4edda, #00b894); color: #155724; }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+        
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        .summary {
+            padding: 30px;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid #3182ce;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #3182ce, #667eea);
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .summary-title {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .summary-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .summary-change {
+            font-size: 12px;
+            color: #38a169;
+            font-weight: 600;
+        }
+        
+        .floating-buttons {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+        }
+        
+        .floating-btn {
+            width: 60px;
+            height: 60px;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .floating-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .btn-add {
+            background: linear-gradient(135deg, #38a169, #2f855a);
+            color: white;
+        }
+        
+        .btn-save {
+            background: linear-gradient(135deg, #3182ce, #2c5282);
+            color: white;
+        }
+        
+        .btn-export {
+            background: linear-gradient(135deg, #d69e2e, #b7791f);
+            color: white;
+        }
+        
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        
+        select.editable {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 8px center;
+            background-repeat: no-repeat;
+            background-size: 16px;
+            padding-right: 35px;
+        }
+        
+        @media (max-width: 768px) {
+            .container { margin: 10px; border-radius: 10px; }
+            .header h1 { font-size: 1.8em; }
+            .filters { grid-template-columns: 1fr; }
+            .floating-buttons { right: 20px; bottom: 20px; }
+            .floating-btn { width: 50px; height: 50px; font-size: 20px; }
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+        }
+        
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover { color: black; }
+
+        .hidden-row { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Suivi des Prestations</h1>
+            <p>Système intelligent de gestion des sous-traitants</p>
+        </div>
+        
+        <div class="controls">
+            <div class="filters">
+                <div class="filter-group">
+                    <label>🏢 Prestataire</label>
+                    <select id="filterPrestator">
+                        <option value="">Tous les prestataires</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>📈 Statut</label>
+                    <select id="filterStatus">
+                        <option value="">Tous les statuts</option>
+                        <option value="Planifié">Planifié</option>
+                        <option value="En cours">En cours</option>
+                        <option value="Terminé">Terminé</option>
+                        <option value="En retard">En retard</option>
+                        <option value="Suspendu">Suspendu</option>
+                    </select>
+                </div>
+                
+                <div class="filter-group">
+                    <label>📅 Période</label>
+                    <input type="month" id="filterPeriod">
+                </div>
+                
+                <div class="filter-group">
+                    <label>🎯 Projet</label>
+                    <select id="filterProiect">
+                        <option value="">Tous les projets</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label>🔍 Recherche libre</label>
+                    <input type="text" id="searchInput" placeholder="Rechercher dans tous les champs...">
+                </div>
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-primary" onclick="clearFilters()">🔄 Réinitialiser</button>
+                <button class="btn btn-success" onclick="exportToExcel()">📊 Export Excel</button>
+                <button class="btn btn-warning" onclick="saveToLocalStorage()">💾 Sauvegarder</button>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table id="prestationsTable">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th style="width: 100px;">Date Début</th>
+                        <th style="width: 100px;">Date Fin</th>
+                        <th style="width: 150px;">Prestataire</th>
+                        <th style="width: 120px;">Projet</th>
+                        <th style="width: 200px;">Activité/Description</th>
+                        <th style="width: 60px;">H. Est.</th>
+                        <th style="width: 60px;">H. Réelles</th>
+                        <th style="width: 80px;">Taux/H (€)</th>
+                        <th style="width: 90px;">Montant HT</th>
+                        <th style="width: 80px;">TVA %</th>
+                        <th style="width: 100px;">Total TTC</th>
+                        <th style="width: 100px;">Statut</th>
+                        <th style="width: 100px;">Priorité</th>
+                        <th style="width: 120px;">Progrès</th>
+                        <th style="width: 150px;">Livrables</th>
+                        <th style="width: 120px;">Contact</th>
+                        <th style="width: 120px;">Manager</th>
+                        <th style="width: 100px;">Date Validation</th>
+                        <th style="width: 90px;">N° Facture</th>
+                        <th style="width: 100px;">Date Paiement</th>
+                        <th style="width: 200px;">Commentaires</th>
+                        <th style="width: 80px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Les données seront chargées par JavaScript -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="summary">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-title">📋 Total Prestations</div>
+                    <div class="summary-value" id="totalPrestations">0</div>
+                    <div class="summary-change">Toutes périodes</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-title">💰 Chiffre d'Affaires</div>
+                    <div class="summary-value" id="totalCA">0 €</div>
+                    <div class="summary-change">TTC réalisé</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-title">⏱️ Heures Totales</div>
+                    <div class="summary-value" id="totalHeures">0h</div>
+                    <div class="summary-change">Temps investi</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-title">🚀 En Cours</div>
+                    <div class="summary-value" id="enCours">0</div>
+                    <div class="summary-change">Prestations actives</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-title">📊 Taux Réussite</div>
+                    <div class="summary-value" id="tauxReussite">0%</div>
+                    <div class="summary-change">Projets terminés</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-title">⚠️ En Retard</div>
+                    <div class="summary-value" id="enRetard">0</div>
+                    <div class="summary-change">Attention requise</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="floating-buttons">
+        <button class="floating-btn btn-add" onclick="addNewRow()" title="Ajouter une prestation">+</button>
+        <button class="floating-btn btn-save" onclick="saveToLocalStorage()" title="Sauvegarder">💾</button>
+        <button class="floating-btn btn-export" onclick="exportToExcel()" title="Exporter Excel">📊</button>
+    </div>
+    
+    <!-- Modal de confirmation -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Confirmer la suppression</h3>
+            <p>Êtes-vous sûr de vouloir supprimer cette prestation ?</p>
+            <button class="btn btn-primary" onclick="closeModal()">Annuler</button>
+            <button class="btn btn-warning" onclick="confirmDelete()">Supprimer</button>
+        </div>
+    </div>
+
+    <script>
+        // Données d'exemple
+        let prestations = [
+            {
+                id: '001',
+                dateDebut: '2025-07-01',
+                dateFin: '2025-07-15',
+                prestataire: 'SC Expert Consulting SRL',
+                projet: 'Digitalisation RH',
+                activite: 'Analyse des processus actuels et propositions d\'amélioration',
+                heuresEst: 40,
+                heuresReelles: 38,
+                tauxHoraire: 65,
+                tva: 20,
+                statut: 'Terminé',
+                priorite: 'Élevée',
+                progres: 100,
+                livrables: 'Rapport d\'analyse processus (PDF)',
+                contact: 'contact@expert.ro',
+                manager: 'Popescu Ion',
+                dateValidation: '2025-07-16',
+                numeroFacture: 'F-2025-001',
+                datePaiement: '2025-07-30',
+                commentaires: 'Livraison dans les délais, bonne qualité'
+            },
+            {
+                id: '002',
+                dateDebut: '2025-07-10',
+                dateFin: '2025-08-10',
+                prestataire: 'Freelancer John Doe',
+                projet: 'Développement IT',
+                activite: 'Développement module CRM pour plateforme interne',
+                heuresEst: 120,
+                heuresReelles: 95,
+                tauxHoraire: 45,
+                tva: 20,
+                statut: 'En cours',
+                priorite: 'Critique',
+                progres: 78,
+                livrables: 'Code source + documentation technique',
+                contact: 'john.doe@email.com',
+                manager: 'Ionescu Maria',
+                dateValidation: '',
+                numeroFacture: '',
+                datePaiement: '',
+                commentaires: 'Progrès conforme à la planification'
+            },
+            {
+                id: '003',
+                dateDebut: '2025-06-15',
+                dateFin: '2025-07-05',
+                prestataire: 'Digital Solutions Ltd',
+                projet: 'Audit Financier',
+                activite: 'Audit conformité RGPD et recommandations',
+                heuresEst: 60,
+                heuresReelles: 72,
+                tauxHoraire: 75,
+                tva: 20,
+                statut: 'En retard',
+                priorite: 'Élevée',
+                progres: 90,
+                livrables: 'Rapport audit + plan de remédiation',
+                contact: 'office@digitalsol.com',
+                manager: 'Georgescu Ana',
+                dateValidation: '',
+                numeroFacture: '',
+                datePaiement: '',
+                commentaires: 'Retard dû à la complexité'
+            }
+        ];
+
+        let rowToDelete = null;
+
+        // Charger les données au démarrage
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFromLocalStorage();
+            renderTable();
+            updateSummary();
+            setupEventListeners();
+            updateFilterOptions();
+        });
+
+        function setupEventListeners() {
+            // Filtres
+            document.getElementById('filterPrestator').addEventListener('change', applyFilters);
+            document.getElementById('filterStatus').addEventListener('change', applyFilters);
+            document.getElementById('filterPeriod').addEventListener('change', applyFilters);
+            document.getElementById('filterProiect').addEventListener('change', applyFilters);
+            document.getElementById('searchInput').addEventListener('input', applyFilters);
+            
+            // Modal
+            document.getElementsByClassName('close')[0].addEventListener('click', closeModal);
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('confirmModal');
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+        }
+
+        function updateFilterOptions() {
+            // Mettre à jour les options des filtres avec les valeurs actuelles
+            const prestataires = [...new Set(prestations.map(p => p.prestataire).filter(p => p))];
+            const projets = [...new Set(prestations.map(p => p.projet).filter(p => p))];
+            
+            // Prestataires
+            const prestataireSelect = document.getElementById('filterPrestator');
+            const currentPrestataireValue = prestataireSelect.value;
+            prestataireSelect.innerHTML = '<option value="">Tous les prestataires</option>';
+            prestataires.forEach(prestataire => {
+                const option = document.createElement('option');
+                option.value = prestataire;
+                option.textContent = prestataire;
+                if (prestataire === currentPrestataireValue) option.selected = true;
+                prestataireSelect.appendChild(option);
+            });
+            
+            // Projets
+            const projetSelect = document.getElementById('filterProiect');
+            const currentProjetValue = projetSelect.value;
+            projetSelect.innerHTML = '<option value="">Tous les projets</option>';
+            projets.forEach(projet => {
+                const option = document.createElement('option');
+                option.value = projet;
+                option.textContent = projet;
+                if (projet === currentProjetValue) option.selected = true;
+                projetSelect.appendChild(option);
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            prestations.forEach((prestation, index) => {
+                const row = createTableRow(prestation, index);
+                tbody.appendChild(row);
+            });
+            
+            updateFilterOptions();
+            applyFilters();
+            updateSummary();
+        }
+
+        function createTableRow(prestation, index) {
+            const row = document.createElement('tr');
+            row.setAttribute('data-index', index);
+            
+            const montantHT = (prestation.heuresReelles || prestation.heuresEst) * prestation.tauxHoraire;
+            const totalTTC = montantHT * (1 + prestation.tva / 100);
+            
+            row.innerHTML = `
+                <td>${prestation.id}</td>
+                <td><input type="date" class="editable" value="${prestation.dateDebut}" onchange="updatePrestation(${index}, 'dateDebut', this.value)"></td>
+                <td><input type="date" class="editable" value="${prestation.dateFin}" onchange="updatePrestation(${index}, 'dateFin', this.value)"></td>
+                <td><input type="text" class="editable" value="${prestation.prestataire}" onchange="updatePrestation(${index}, 'prestataire', this.value)"></td>
+                <td><input type="text" class="editable" value="${prestation.projet}" onchange="updatePrestation(${index}, 'projet', this.value)"></td>
+                <td><input type="text" class="editable" value="${prestation.activite}" onchange="updatePrestation(${index}, 'activite', this.value)"></td>
+                <td class="text-right"><input type="number" class="editable" value="${prestation.heuresEst}" onchange="updatePrestation(${index}, 'heuresEst', parseFloat(this.value))" style="width:60px;"></td>
+                <td class="text-right"><input type="number" class="editable" value="${prestation.heuresReelles}" onchange="updatePrestation(${index}, 'heuresReelles', parseFloat(this.value))" style="width:60px;"></td>
+                <td class="text-right"><input type="number" class="editable" value="${prestation.tauxHoraire}" onchange="updatePrestation(${index}, 'tauxHoraire', parseFloat(this.value))" style="width:70px;"></td>
+                <td class="text-right">${montantHT.toLocaleString('fr-FR')} €</td>
+                <td class="text-right"><input type="number" class="editable" value="${prestation.tva}" onchange="updatePrestation(${index}, 'tva', parseFloat(this.value))" style="width:50px;"></td>
+                <td class="text-right">${totalTTC.toLocaleString('fr-FR')} €</td>
+                <td>${createStatusSelect(prestation.statut, index)}</td>
+                <td>${createPrioritySelect(prestation.priorite, index)}</td>
+                <td>${createProgressBar(prestation.progres, index)}</td>
+                <td><input type="text" class="editable" value="${prestation.livrables}" onchange="updatePrestation(${index}, 'livrables', this.value)"></td>
+                <td><input type="email" class="editable" value="${prestation.contact}" onchange="updatePrestation(${index}, 'contact', this.value)"></td>
+                <td><input type="text" class="editable" value="${prestation.manager}" onchange="updatePrestation(${index}, 'manager', this.value)"></td>
+                <td><input type="date" class="editable" value="${prestation.dateValidation}" onchange="updatePrestation(${index}, 'dateValidation', this.value)"></td>
+                <td><input type="text" class="editable" value="${prestation.numeroFacture}" onchange="updatePrestation(${index}, 'numeroFacture', this.value)"></td>
+                <td><input type="date" class="editable" value="${prestation.datePaiement}" onchange="updatePrestation(${index}, 'datePaiement', this.value)"></td>
+                <td><input type="text" class="editable" value="${prestation.commentaires}" onchange="updatePrestation(${index}, 'commentaires', this.value)"></td>
+                <td class="text-center">
+                    <button onclick="deleteRow(${index})" style="background: #e17055; color: white; border: none; border-radius: 4px; padding: 5px 8px; cursor: pointer; font-size: 12px;">🗑️</button>
+                </td>
+            `;
+            
+            return row;
+        }
+
+        function createStatusSelect(currentStatus, index) {
+            const statuses = ['Planifié', 'En cours', 'Terminé', 'En retard', 'Suspendu'];
+            const statusClasses = {
+                'Planifié': 'status-planifie',
+                'En cours': 'status-en-cours', 
+                'Terminé': 'status-termine',
+                'En retard': 'status-retard',
+                'Suspendu': 'status-suspendu'
+            };
+            
+            return `<select class="editable status ${statusClasses[currentStatus]}" onchange="updatePrestation(${index}, 'statut', this.value); this.className='editable status ${statusClasses[this.value]}'">
+                ${statuses.map(status => `<option value="${status}" ${status === currentStatus ? 'selected' : ''}>${status}</option>`).join('')}
+            </select>`;
+        }
+
+        function createPrioritySelect(currentPriority, index) {
+            const priorities = ['Critique', 'Élevée', 'Moyenne', 'Faible'];
+            const priorityClasses = {
+                'Critique': 'priority-critique',
+                'Élevée': 'priority-elevee',
+                'Moyenne': 'priority-moyenne', 
+                'Faible': 'priority-faible'
+            };
+            
+            return `<select class="editable priority ${priorityClasses[currentPriority]}" onchange="updatePrestation(${index}, 'priorite', this.value); this.className='editable priority ${priorityClasses[this.value]}'">
+                ${priorities.map(priority => `<option value="${priority}" ${priority === currentPriority ? 'selected' : ''}>${priority}</option>`).join('')}
+            </select>`;
+        }
+
+        function createProgressBar(progress, index) {
+            return `
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${progress}%">
+                        <span class="progress-text">${progress}%</span>
+                    </div>
+                </div>
+                <input type="range" min="0" max="100" value="${progress}" onchange="updatePrestation(${index}, 'progres', parseInt(this.value)); renderTable()" style="width: 100%; margin-top: 5px;">
+            `;
+        }
+
+        function updatePrestation(index, field, value) {
+            prestations[index][field] = value;
+            if (field === 'heuresReelles' || field === 'tauxHoraire' || field === 'tva') {
+                renderTable(); // Re-render pour mettre à jour les calculs
+            } else if (field === 'prestataire' || field === 'projet') {
+                updateFilterOptions(); // Mettre à jour les filtres si prestataire ou projet change
+            }
+            updateSummary();
+        }
+
+        function applyFilters() {
+            const prestataireFilter = document.getElementById('filterPrestator').value.toLowerCase();
+            const statusFilter = document.getElementById('filterStatus').value.toLowerCase();
+            const periodeFilter = document.getElementById('filterPeriod').value;
+            const projetFilter = document.getElementById('filterProiect').value.toLowerCase();
+            const searchFilter = document.getElementById('searchInput').value.toLowerCase();
+            
+            const rows = document.querySelectorAll('#tableBody tr');
+            
+            rows.forEach(row => {
+                const index = parseInt(row.getAttribute('data-index'));
+                const prestation = prestations[index];
+                
+                let show = true;
+                
+                // Filtre prestataire
+                if (prestataireFilter && !prestation.prestataire.toLowerCase().includes(prestataireFilter)) {
+                    show = false;
+                }
+                
+                // Filtre statut
+                if (statusFilter && !prestation.statut.toLowerCase().includes(statusFilter)) {
+                    show = false;
+                }
+                
+                // Filtre projet
+                if (projetFilter && !prestation.projet.toLowerCase().includes(projetFilter)) {
+                    show = false;
+                }
+                
+                // Filtre période
+                if (periodeFilter && !prestation.dateDebut.startsWith(periodeFilter)) {
+                    show = false;
+                }
+                
+                // Recherche libre dans tous les champs
+                if (searchFilter) {
+                    const searchableText = Object.values(prestation).join(' ').toLowerCase();
+                    if (!searchableText.includes(searchFilter)) {
+                        show = false;
+                    }
+                }
+                
+                if (show) {
+                    row.classList.remove('hidden-row');
+                } else {
+                    row.classList.add('hidden-row');
+                }
+            });
+            
+            updateSummary();
+        }
+
+        function addNewRow() {
+            const newId = String(prestations.length + 1).padStart(3, '0');
+            const newPrestation = {
+                id: newId,
+                dateDebut: '',
+                dateFin: '',
+                prestataire: '',
+                projet: '',
+                activite: '',
+                heuresEst: 0,
+                heuresReelles: 0,
+                tauxHoraire: 0,
+                tva: 20,
+                statut: 'Planifié',
+                priorite: 'Moyenne',
+                progres: 0,
+                livrables: '',
+                contact: '',
+                manager: '',
+                dateValidation: '',
+                numeroFacture: '',
+                datePaiement: '',
+                commentaires: ''
+            };
+            
+            prestations.push(newPrestation);
+            renderTable();
+        }
+
+        function deleteRow(index) {
+            rowToDelete = index;
+            document.getElementById('confirmModal').style.display = 'block';
+        }
+
+        function confirmDelete() {
+            if (rowToDelete !== null) {
+                prestations.splice(rowToDelete, 1);
+                renderTable();
+                rowToDelete = null;
+            }
+            closeModal();
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').style.display = 'none';
+            rowToDelete = null;
+        }
+
+        function clearFilters() {
+            document.getElementById('filterPrestator').value = '';
+            document.getElementById('filterStatus').value = '';
+            document.getElementById('filterPeriod').value = '';
+            document.getElementById('filterProiect').value = '';
+            document.getElementById('searchInput').value = '';
+            applyFilters();
+        }
+
+        function updateSummary() {
+            // Compter seulement les lignes visibles
+            const visibleRows = document.querySelectorAll('#tableBody tr:not(.hidden-row)');
+            const totalPrestations = visibleRows.length;
+            
+            let totalCA = 0;
+            let totalHeures = 0;
+            let enCours = 0;
+            let enRetard = 0;
+            let termines = 0;
+            
+            visibleRows.forEach(row => {
+                const index = parseInt(row.getAttribute('data-index'));
+                const prestation = prestations[index];
+                
+                const montantHT = (prestation.heuresReelles || prestation.heuresEst) * prestation.tauxHoraire;
+                const totalTTC = montantHT * (1 + prestation.tva / 100);
+                
+                if (prestation.statut === 'Terminé') {
+                    totalCA += totalTTC;
+                    termines++;
+                }
+                
+                totalHeures += prestation.heuresReelles || prestation.heuresEst;
+                
+                if (prestation.statut === 'En cours') enCours++;
+                if (prestation.statut === 'En retard') enRetard++;
+            });
+            
+            const tauxReussite = totalPrestations > 0 ? Math.round((termines / totalPrestations) * 100) : 0;
+            
+            document.getElementById('totalPrestations').textContent = totalPrestations;
+            document.getElementById('totalCA').textContent = totalCA.toLocaleString('fr-FR') + ' €';
+            document.getElementById('totalHeures').textContent = totalHeures + 'h';
+            document.getElementById('enCours').textContent = enCours;
+            document.getElementById('enRetard').textContent = enRetard;
+            document.getElementById('tauxReussite').textContent = tauxReussite + '%';
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('prestations', JSON.stringify(prestations));
+            alert('Données sauvegardées avec succès ! 💾');
+        }
+
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('prestations');
+            if (saved) {
+                prestations = JSON.parse(saved);
+            }
+        }
+
+        function exportToExcel() {
+            // Créer un nouveau workbook
+            const wb = XLSX.utils.book_new();
+            
+            // Préparer les données pour Excel
+            const excelData = prestations.map(prestation => {
+                const montantHT = (prestation.heuresReelles || prestation.heuresEst) * prestation.tauxHoraire;
+                const totalTTC = montantHT * (1 + prestation.tva / 100);
+                
+                return {
+                    'ID': prestation.id,
+                    'Date Début': prestation.dateDebut,
+                    'Date Fin': prestation.dateFin,
+                    'Prestataire': prestation.prestataire,
+                    'Projet': prestation.projet,
+                    'Activité/Description': prestation.activite,
+                    'Heures Estimées': prestation.heuresEst,
+                    'Heures Réelles': prestation.heuresReelles,
+                    'Taux/Heure (€)': prestation.tauxHoraire,
+                    'Montant HT (€)': montantHT,
+                    'TVA (%)': prestation.tva,
+                    'Total TTC (€)': totalTTC,
+                    'Statut': prestation.statut,
+                    'Priorité': prestation.priorite,
+                    'Progrès (%)': prestation.progres,
+                    'Livrables': prestation.livrables,
+                    'Contact': prestation.contact,
+                    'Manager': prestation.manager,
+                    'Date Validation': prestation.dateValidation,
+                    'N° Facture': prestation.numeroFacture,
+                    'Date Paiement': prestation.datePaiement,
+                    'Commentaires': prestation.commentaires
+                };
+            });
+            
+            // Créer la feuille principale
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            
+            // Ajuster la largeur des colonnes
+            const colWidths = [
+                {wch: 8},   // ID
+                {wch: 12},  // Date Début
+                {wch: 12},  // Date Fin
+                {wch: 25},  // Prestataire
+                {wch: 20},  // Projet
+                {wch: 35},  // Activité
+                {wch: 10},  // H. Est.
+                {wch: 10},  // H. Réelles
+                {wch: 12},  // Taux/H
+                {wch: 15},  // Montant HT
+                {wch: 8},   // TVA
+                {wch: 15},  // Total TTC
+                {wch: 12},  // Statut
+                {wch: 12},  // Priorité
+                {wch: 10},  // Progrès
+                {wch: 30},  // Livrables
+                {wch: 25},  // Contact
+                {wch: 20},  // Manager
+                {wch: 15},  // Date Validation
+                {wch: 12},  // N° Facture
+                {wch: 15},  // Date Paiement
+                {wch: 35}   // Commentaires
+            ];
+            ws['!cols'] = colWidths;
+            
+            // Ajouter la feuille au workbook
+            XLSX.utils.book_append_sheet(wb, ws, "Prestations");
+            
+            // Créer une feuille de statistiques
+            const statsData = [
+                ['Statistique', 'Valeur'],
+                ['Total Prestations', prestations.length],
+                ['CA Total TTC (€)', prestations.reduce((sum, p) => {
+                    const montantHT = (p.heuresReelles || p.heuresEst) * p.tauxHoraire;
+                    return sum + (montantHT * (1 + p.tva / 100));
+                }, 0).toFixed(2)],
+                ['Total Heures', prestations.reduce((sum, p) => sum + (p.heuresReelles || p.heuresEst), 0)],
+                ['Prestations Terminées', prestations.filter(p => p.statut === 'Terminé').length],
+                ['Prestations En Cours', prestations.filter(p => p.statut === 'En cours').length],
+                ['Prestations En Retard', prestations.filter(p => p.statut === 'En retard').length],
+                ['Taux de Réussite (%)', prestations.length > 0 ? 
+                    Math.round((prestations.filter(p => p.statut === 'Terminé').length / prestations.length) * 100) : 0]
+            ];
+            
+            const statsWs = XLSX.utils.aoa_to_sheet(statsData);
+            statsWs['!cols'] = [{wch: 25}, {wch: 15}];
+            XLSX.utils.book_append_sheet(wb, statsWs, "Statistiques");
+            
+            // Générer le fichier et le télécharger
+            const fileName = `Prestations_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            
+            alert('Export Excel généré avec succès ! 📊');
+        }
+    </script>
+</body>
+</html>
